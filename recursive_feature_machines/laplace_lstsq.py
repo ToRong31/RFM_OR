@@ -1,7 +1,7 @@
 import torch
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, random_split
-from rfm import LaplaceRFM, GeneralizedLaplaceRFM, GaussRFM, NTKModel
+from rfm import LaplaceRFM
 import torch.nn.functional as F
 import logging
 import wandb
@@ -44,15 +44,16 @@ else:
     DEVICE = torch.device("cpu")
     DEV_MEM_GB = 8
 
-# Định nghĩa transform: chuyển đổi ảnh MNIST thành tensor và làm phẳng thành vector 784 chiều
+# Định nghĩa transform: chuyển đổi ảnh CIFAR-10 thành tensor và chuẩn hóa
 transform = transforms.Compose([
     transforms.ToTensor(),
-    transforms.Lambda(lambda x: x.view(-1))
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),  # Chuẩn hóa ảnh RGB
+    transforms.Lambda(lambda x: x.view(-1))  # Làm phẳng ảnh thành vector
 ])
 
-# Tải dataset MNIST cho training và testing
-full_train_dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
-test_dataset = datasets.MNIST(root='./data', train=False, download=True, transform=transform)
+# Tải dataset CIFAR-10 cho training và testing
+full_train_dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+test_dataset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
 
 # Chia tập train ra thành một phần nhỏ để tránh làm đầy bộ nhớ
 subset_size = 10000  # Có thể điều chỉnh theo khả năng của máy
@@ -71,17 +72,16 @@ laplace_model = LaplaceRFM(
     diag=False
 )
 
-# Phần huấn luyện nên sửa thành
-
+# Phần huấn luyện
 wandb.login(key='cf3dc9c85e2330a83d886a54b44d32768b2d7b60')
-wandb.init(project="rfm-nmf", name="Try3")
+wandb.init(project="rfm-nmf", name="LaplaceRFM-CIFAR10")
 logger.info("Training LaplaceRFM")
 laplace_model.fit(
     train_data=train_loader,
     test_data=test_loader,
     iters=3,  # Tham số này có thể conflict với epochs
     classification=True,
-    total_points_to_sample=subset_size, # Nên để None để dùng toàn bộ data
+    total_points_to_sample=subset_size,  # Nên để None để dùng toàn bộ data
     M_batch_size=64,  # Tăng batch size để tận dụng GPU
     method='lstsq',
     verbose=True,
