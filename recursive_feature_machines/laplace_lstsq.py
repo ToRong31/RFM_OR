@@ -1,7 +1,7 @@
 import torch
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, random_split
-from rfm import LaplaceRFM
+from rfm.eigenpro import LaplaceRFM
 import torch.nn.functional as F
 import logging
 import wandb

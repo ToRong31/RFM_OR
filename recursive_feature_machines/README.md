@@ -51,11 +51,12 @@ y_test = fstar(X_test)
 model.fit(
     (X_train, y_train), 
     (X_test, y_test), 
+    loader=False, 
     iters=5,
-    classification=False
+    classif=False
 )
 ```
 
 
 # Paper
-[Mechanism for feature learning in neural networks and backpropagation-free machine learning models](https://www.science.org/doi/10.1126/science.adi5639)
+[Mechanism of feature learning in deep fully connected networks and kernel machines that recursively learn features](https://arxiv.org/abs/2212.13881)
