@@ -7,6 +7,7 @@ from tqdm.contrib import tenumerate
 import hickle
 from .utils import matrix_sqrt
 from time import time
+import wandb
 
 class RecursiveFeatureMachine(torch.nn.Module):
 
@@ -128,14 +129,20 @@ class RecursiveFeatureMachine(torch.nn.Module):
         best_alphas, best_M, best_sqrtM = None, None, None
         best_metric = float('inf') if not classification else 0 
         for i in range(iters):
+            start_time = time.time()
             self.fit_predictor(X_train, y_train, X_val=X_test, y_val=y_test, 
                                classification=classification, class_weight=class_weight, 
                                bs=bs, lr_scale=lr_scale, **kwargs)
             
+            test_mse = self.score(X_test, y_test, bs, metric='mse')
+            log_data = {"epoch": i, "test_mse": test_mse}
+
             if classification:
                 test_acc = self.score(X_test, y_test, bs, metric='accuracy')
+                log_data["test_accuracy"] = test_acc
                 if method == 'lstsq':
                     train_acc = self.score(X_train, y_train, bs, metric='accuracy')
+                    log_data["train_accuracy"] = train_acc
                     if verbose:
                         print(f"Round {i}, Train Acc: {100*train_acc:.2f}%, Test Acc: {100*test_acc:.2f}%")
                 else:
@@ -147,6 +154,10 @@ class RecursiveFeatureMachine(torch.nn.Module):
             if verbose:
                 print(f"Round {i}, Test MSE: {test_mse:.4f}")
 
+            elapsed_time = time.time() - start_time
+            log_data["epoch_time_sec"] = elapsed_time
+
+            wandb.log(log_data)
             # if classification and accuracy higher, or if regression and mse lower
             if return_best_params and classification and test_acc > best_metric:
                 best_metric = test_acc
@@ -178,6 +189,7 @@ class RecursiveFeatureMachine(torch.nn.Module):
             print(f"Final MSE: {final_mse:.4f}")
         if classification:
             final_test_acc = self.score(X_test, y_test, bs=bs, metric='accuracy')
+            log_data["final_test_accuracy"] = final_test_acc
             if verbose:
                 print(f"Final Test Acc: {100*final_test_acc:.2f}%")
 
@@ -204,7 +216,8 @@ class RecursiveFeatureMachine(torch.nn.Module):
 
         if return_mse:
             return Ms, mses
-            
+        
+        wandb.log(log_data)
         return final_mse
     
     def _compute_optimal_M_batch(self, p, c, d, scalar_size=4):
